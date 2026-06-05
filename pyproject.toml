@@ -1,6 +1,6 @@
-﻿[build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+[build-system]
+requires = ["setuptools>=72", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "phi47-superpowers"
@@ -22,7 +22,7 @@ phi47 = "phi47.cli.main:cli"
 
 [project.urls]
 Homepage   = "https://phi47.tuch.systems"
-Repository = "https://github.com/TUCHSystems/phi47-superpowers"
+Repository = "https://github.com/wcalmels/phi47-superpowers"
 
 [tool.setuptools.packages.find]
 where = ["src"]
