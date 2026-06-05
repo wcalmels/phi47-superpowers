@@ -1,8 +1,8 @@
-﻿# Copyright (c) 2025 Walter Calmels Von dem Knesebeck -- TUCH Systems Research Laboratory
+﻿# Copyright (c) 2025 wcalmels -- TUCH Systems Research Laboratory
 # SPDX-License-Identifier: MIT
 __version__   = "0.1.0"
-__author__    = "Walter Calmels Von dem Knesebeck"
-__email__     = "walter@tuch.systems"
+__author__    = "wcalmels"
+__email__     = "wcalmels@phi47.cl"
 __license__   = "MIT"
 __copyright__ = "Copyright (c) 2025 TUCH Systems Research Laboratory"
 

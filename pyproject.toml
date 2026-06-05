@@ -9,7 +9,7 @@ description = "Structural code quality layer based on IIT 4.0"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
-authors = [{ name = "Walter Calmels Von dem Knesebeck", email = "walter@tuch.systems" }]
+authors = [{ name = "wcalmels", email = "wcalmels@phi47.cl" }]
 keywords = ["linter","code-quality","iit","phi","ast","developer-tools"]
 dependencies = ["numpy>=1.24","scipy>=1.11","click>=8.1","rich>=13.0"]
 
