@@ -1,0 +1,32 @@
+﻿[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "phi47-superpowers"
+version = "0.1.0"
+description = "Structural code quality layer based on IIT 4.0"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [{ name = "Walter Calmels Von dem Knesebeck", email = "walter@tuch.systems" }]
+keywords = ["linter","code-quality","iit","phi","ast","developer-tools"]
+dependencies = ["numpy>=1.24","scipy>=1.11","click>=8.1","rich>=13.0"]
+
+[project.optional-dependencies]
+llm = ["anthropic>=0.20","openai>=1.0"]
+dev = ["pytest>=7.4","pytest-cov>=4.1","black>=23.0","ruff>=0.1"]
+
+[project.scripts]
+phi47 = "phi47.cli.main:cli"
+
+[project.urls]
+Homepage   = "https://phi47.tuch.systems"
+Repository = "https://github.com/TUCHSystems/phi47-superpowers"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts   = "-v --tb=short"

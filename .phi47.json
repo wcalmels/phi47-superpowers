@@ -1,0 +1,7 @@
+﻿{
+  "version": "0.1.0",
+  "phi_threshold": 0.5,
+  "auto_refine": true,
+  "backend": "claude",
+  "exclude": ["tests/", "venv/", ".venv/", "dist/", "build/"]
+}
