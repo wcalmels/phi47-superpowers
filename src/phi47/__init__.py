@@ -1,6 +1,6 @@
-﻿# Copyright (c) 2025 wcalmels -- TUCH Systems Research Laboratory
+# Copyright (c) 2025 wcalmels -- TUCH Systems Research Laboratory
 # SPDX-License-Identifier: MIT
-__version__   = "0.1.0"
+__version__   = "0.1.1"
 __author__    = "wcalmels"
 __email__     = "wcalmels@phi47.cl"
 __license__   = "MIT"
