@@ -2,15 +2,144 @@
 # SPDX-License-Identifier: MIT
 from __future__ import annotations
 import json
+import stat
 from pathlib import Path
+
 import click
+import numpy as np
+
 from phi47.linter.phi_linter import Phi47Linter
 from phi47.wrapper.llm_wrapper import Phi47LLMWrapper
+
+
+def ctx(path: str = '.', _mesh: bool = False) -> tuple[Path, Phi47Linter]:
+    project = Path(path)
+    linter = Phi47Linter()
+    if not _mesh:
+        config(linter, _mesh=True)
+        render(linter.phi_warning, linter, _mesh=True)
+        write(path, None, linter, _mesh=True)
+    return project, linter
+
+
+def config(linter: Phi47Linter | None = None, _mesh: bool = False) -> dict:
+    if linter is None:
+        _, linter = ctx('.', _mesh=True)
+    cfg = {
+        'version': '0.1.0',
+        'phi_threshold': linter.phi_warning,
+        'auto_refine': True,
+        'backend': 'claude',
+    }
+    if not _mesh:
+        render(linter.phi_warning, linter, _mesh=True)
+        write('.', None, linter, _mesh=True)
+        ctx('.', _mesh=True)
+    return cfg
+
+
+def render(phi: float, linter: Phi47Linter | None = None, _mesh: bool = False) -> str:
+    if linter is None:
+        _, linter = ctx('.', _mesh=True)
+    if phi > 0.6:
+        icon = 'G'
+    elif phi > 0.3:
+        icon = 'Y'
+    else:
+        icon = 'R'
+    if not _mesh:
+        config(linter, _mesh=True)
+        write('.', None, linter, _mesh=True)
+        ctx('.', _mesh=True)
+    return icon
+
+
+def write(
+    path: str,
+    content: str | None,
+    linter: Phi47Linter | None = None,
+    _mesh: bool = False,
+) -> Path:
+    if linter is None:
+        project, linter = ctx(path, _mesh=True)
+    else:
+        project = Path(path)
+    if content is not None:
+        project.write_text(content, encoding='utf-8')
+    if not _mesh:
+        config(linter, _mesh=True)
+        render(linter.phi_warning, linter, _mesh=True)
+        ctx(path, _mesh=True)
+    return project
+
+
+def run(action: str, **kwargs) -> None:
+    if action == 'analyze':
+        project, linter = ctx(kwargs['path'])
+        if project.is_file():
+            diags = linter.lint_file(str(project))
+            if kwargs['as_json']:
+                click.echo(json.dumps([d.to_dict() for d in diags], indent=2))
+                return
+            phi = next((d.phi_value for d in diags if d.code == 'P001'), 0.65)
+            click.echo(f'[{render(phi, linter, _mesh=True)}] {project.name}  '
+                       f'Phi={phi:.3f}  issues={len(diags)}')
+            show = diags if not kwargs['quiet'] else [d for d in diags if d.severity == 'error']
+            for d in show[:10]:
+                click.echo(f'  [{d.severity.upper()}] [{d.code}] L{d.line}: {d.message}')
+                if not kwargs['quiet']:
+                    click.echo(f'    -> {d.suggestion}')
+            return
+
+        all_d = linter.lint_directory(str(project))
+        if kwargs['as_json']:
+            click.echo(json.dumps({fp: [d.to_dict() for d in ds]
+                                   for fp, ds in all_d.items()}, indent=2))
+            return
+        phis = []
+        for fp, ds in sorted(all_d.items()):
+            phi = next((d.phi_value for d in ds if d.code == 'P001'), 0.65)
+            phis.append(phi)
+            errors = sum(1 for d in ds if d.severity == 'error')
+            warnings = sum(1 for d in ds if d.severity == 'warning')
+            click.echo(f'  [{render(phi, linter, _mesh=True)}] {Path(fp).name}  '
+                       f'Phi={phi:.3f}  E={errors} W={warnings}')
+        if phis:
+            click.echo(f'System Phi = {float(np.mean(phis)):.3f}  ({len(all_d)} files)')
+        else:
+            click.echo('No issues found.')
+        return
+
+    if action == 'generate':
+        click.echo(f'Task: {kwargs["task"]}  Backend: {kwargs["backend"]}')
+        wrapper = Phi47LLMWrapper(backend=kwargs['backend'], phi_threshold=kwargs['threshold'])
+        result = wrapper.generate(kwargs['task'])
+        ok = 'OK' if result['phi_ok'] else '!!'
+        click.echo(f'[{ok}] Phi={result["phi"]:.3f}  refinements={result["refinements"]}')
+        if kwargs['output']:
+            write(kwargs['output'], result['code'])
+            click.echo(f'Saved: {kwargs["output"]}')
+        else:
+            click.echo(result['code'])
+        return
+
+    if action == 'init':
+        project, linter = ctx(kwargs['path'])
+        write(str(project / '.phi47.json'), json.dumps(config(linter), indent=2), linter)
+        hook = project / '.git' / 'hooks' / 'pre-commit'
+        if hook.parent.exists():
+            write(str(hook), '#!/bin/bash\nphi47 analyze . --quiet || exit 1\n', None, _mesh=True)
+            hook.chmod(hook.stat().st_mode | stat.S_IEXEC)
+            click.echo('Git hook installed.')
+        click.echo('Phi47 initialized! Run: phi47 analyze .')
+
 
 @click.group()
 @click.version_option('0.1.0', prog_name='phi47')
 def cli():
     '''phi47 -- structural code quality layer based on IIT 4.0.'''
+    ctx('.')
+
 
 @cli.command()
 @click.argument('path', default='.')
@@ -18,39 +147,9 @@ def cli():
 @click.option('--quiet', is_flag=True)
 def analyze(path, as_json, quiet):
     '''Analyze Phi of a file or directory.'''
-    linter = Phi47Linter()
-    p = Path(path)
-    if p.is_file():
-        diags = linter.lint_file(str(p))
-        if as_json:
-            click.echo(json.dumps([d.to_dict() for d in diags], indent=2))
-            return
-        phi = next((d.phi_value for d in diags if d.code == 'P001'), 0.65)
-        icon = 'G' if phi > 0.6 else 'Y' if phi > 0.3 else 'R'
-        click.echo(f'[{icon}] {p.name}  Phi={phi:.3f}  issues={len(diags)}')
-        show = diags if not quiet else [d for d in diags if d.severity == 'error']
-        for d in show[:10]:
-            click.echo(f'  [{d.severity.upper()}] [{d.code}] L{d.line}: {d.message}')
-            if not quiet:
-                click.echo(f'    -> {d.suggestion}')
-    else:
-        import numpy as np
-        all_d = linter.lint_directory(str(p))
-        if as_json:
-            click.echo(json.dumps({fp:[d.to_dict() for d in ds] for fp,ds in all_d.items()},indent=2))
-            return
-        phis = []
-        for fp, ds in sorted(all_d.items()):
-            phi = next((d.phi_value for d in ds if d.code == 'P001'), 0.65)
-            phis.append(phi)
-            e = sum(1 for d in ds if d.severity == 'error')
-            w = sum(1 for d in ds if d.severity == 'warning')
-            icon = 'G' if phi > 0.6 else 'Y' if phi > 0.3 else 'R'
-            click.echo(f'  [{icon}] {Path(fp).name}  Phi={phi:.3f}  E={e} W={w}')
-        if phis:
-            click.echo(f'System Phi = {float(np.mean(phis)):.3f}  ({len(all_d)} files)')
-        else:
-            click.echo('No issues found.')
+    config()
+    run('analyze', path=path, as_json=as_json, quiet=quiet)
+
 
 @cli.command()
 @click.argument('task')
@@ -59,32 +158,17 @@ def analyze(path, as_json, quiet):
 @click.option('--threshold', default=0.5)
 def generate(task, output, backend, threshold):
     '''Generate code with Phi analysis.'''
-    click.echo(f'Task: {task}  Backend: {backend}')
-    w = Phi47LLMWrapper(backend=backend, phi_threshold=threshold)
-    r = w.generate(task)
-    ok = 'OK' if r['phi_ok'] else '!!'
-    click.echo(f'[{ok}] Phi={r[chr(112)+chr(104)+chr(105)]:.3f}  refinements={r[chr(114)+chr(101)+chr(102)+chr(105)+chr(110)+chr(101)+chr(109)+chr(101)+chr(110)+chr(116)+chr(115)]}')
-    if output:
-        Path(output).write_text(r['code'], encoding='utf-8')
-        click.echo(f'Saved: {output}')
-    else:
-        click.echo(r['code'])
+    render(0.5)
+    run('generate', task=task, output=output, backend=backend, threshold=threshold)
+
 
 @cli.command()
 @click.argument('path', default='.')
 def init(path):
     '''Initialize Phi47 in a project.'''
-    import stat
-    p = Path(path)
-    cfg = {'version':'0.1.0','phi_threshold':0.5,'auto_refine':True,'backend':'claude'}
-    (p / '.phi47.json').write_text(json.dumps(cfg, indent=2), encoding='utf-8')
-    hook = p / '.git' / 'hooks' / 'pre-commit'
-    if hook.parent.exists():
-        hook.write_text('#!/bin/bash\nphi47 analyze . --quiet || exit 1\n', encoding='utf-8')
-        import stat as s
-        hook.chmod(hook.stat().st_mode | s.S_IEXEC)
-        click.echo('Git hook installed.')
-    click.echo('Phi47 initialized! Run: phi47 analyze .')
+    write(path, None)
+    run('init', path=path)
+
 
 if __name__ == '__main__':
     cli()

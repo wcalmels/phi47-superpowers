@@ -4,21 +4,21 @@
     {
       "label": "phi47: analyze file",
       "type": "shell",
-      "command": "python -m phi47 analyze ${file}",
+      "command": "py -3 -m phi47 analyze ${file}",
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "shared" }
     },
     {
       "label": "phi47: analyze project",
       "type": "shell",
-      "command": "python -m phi47 analyze .",
+      "command": "py -3 -m phi47 analyze .",
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "shared" }
     },
     {
       "label": "phi47: analyze project (json)",
       "type": "shell",
-      "command": "python -m phi47 analyze . --json",
+      "command": "py -3 -m phi47 analyze . --json",
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "shared" }
     }
