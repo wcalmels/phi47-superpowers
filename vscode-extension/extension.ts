@@ -1,0 +1,235 @@
+import * as vscode from 'vscode';
+import { exec } from 'child_process';
+import * as path from 'path';
+
+const DIAG_COLLECTION = vscode.languages.createDiagnosticCollection('phi47');
+let statusBarItem: vscode.StatusBarItem;
+
+export function activate(context: vscode.ExtensionContext) {
+    console.log('Phi47 extension activated');
+
+    // Status bar
+    statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+    statusBarItem.command = 'phi47.analyzeFile';
+    context.subscriptions.push(statusBarItem);
+
+    // Commands
+    context.subscriptions.push(
+        vscode.commands.registerCommand('phi47.analyzeFile', () => {
+            const editor = vscode.window.activeTextEditor;
+            if (editor && editor.document.languageId === 'python') {
+                analyzeFile(editor.document);
+            } else {
+                vscode.window.showWarningMessage('Phi47: Open a Python file first.');
+            }
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('phi47.analyzeWorkspace', () => {
+            analyzeWorkspace();
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('phi47.showReport', () => {
+            showReport();
+        })
+    );
+
+    // Auto-run on save
+    context.subscriptions.push(
+        vscode.workspace.onDidSaveTextDocument(doc => {
+            const cfg = vscode.workspace.getConfiguration('phi47');
+            if (cfg.get('enableOnSave') && doc.languageId === 'python') {
+                analyzeFile(doc);
+            }
+        })
+    );
+
+    // Run on open
+    if (vscode.window.activeTextEditor?.document.languageId === 'python') {
+        analyzeFile(vscode.window.activeTextEditor.document);
+    }
+}
+
+function getPythonPath(): string {
+    const cfg = vscode.workspace.getConfiguration('phi47');
+    return cfg.get('pythonPath') as string || 'python';
+}
+
+function analyzeFile(doc: vscode.TextDocument) {
+    const python = getPythonPath();
+    const filePath = doc.fileName;
+    const cmd = `"${python}" -m phi47 analyze "${filePath}"`;
+
+    updateStatusBar('$(loading~spin) Phi47...', '');
+
+    exec(cmd, (err, stdout, stderr) => {
+        const output = stdout + stderr;
+        const diagnostics = parseDiagnostics(doc, output);
+        DIAG_COLLECTION.set(doc.uri, diagnostics);
+        updateStatusBarFromOutput(output, filePath);
+
+        if (diagnostics.length === 0) {
+            updateStatusBar('$(check) Phi OK', 'No Phi47 issues found');
+        }
+    });
+}
+
+function analyzeWorkspace() {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders) {
+        vscode.window.showWarningMessage('Phi47: No workspace folder open.');
+        return;
+    }
+
+    const python = getPythonPath();
+    const wsPath = folders[0].uri.fsPath;
+    const cmd = `"${python}" -m phi47 analyze "${wsPath}"`;
+
+    vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: 'Phi47: Analyzing workspace...',
+        cancellable: false
+    }, () => new Promise<void>(resolve => {
+        exec(cmd, (err, stdout, stderr) => {
+            const lines = (stdout + stderr).split('\n').filter(l => l.trim());
+            vscode.window.showInformationMessage(
+                `Phi47: Workspace analysis complete. ${lines.length} issues found.`,
+                'Show Output'
+            ).then(sel => {
+                if (sel === 'Show Output') showOutputChannel(stdout + stderr);
+            });
+            resolve();
+        });
+    }));
+}
+
+function parseDiagnostics(doc: vscode.TextDocument, output: string): vscode.Diagnostic[] {
+    const diagnostics: vscode.Diagnostic[] = [];
+    const pattern = /^(.+):(\d+):(\d+): (error|warning|info|hint) \[(P\d+)\] (.+)$/;
+
+    for (const line of output.split('\n')) {
+        const match = line.match(pattern);
+        if (!match) continue;
+
+        const [, file, lineStr, colStr, severity, code, message] = match;
+
+        // Only process diagnostics for this file
+        if (!doc.fileName.endsWith(path.basename(file)) &&
+            !file.includes(path.basename(doc.fileName))) continue;
+
+        const lineNum = Math.max(0, parseInt(lineStr) - 1);
+        const col     = Math.max(0, parseInt(colStr));
+        const range   = new vscode.Range(lineNum, col, lineNum, 999);
+
+        const sev = severity === 'error'   ? vscode.DiagnosticSeverity.Error
+                  : severity === 'warning' ? vscode.DiagnosticSeverity.Warning
+                  : severity === 'info'    ? vscode.DiagnosticSeverity.Information
+                  :                          vscode.DiagnosticSeverity.Hint;
+
+        const diag = new vscode.Diagnostic(range, `[${code}] ${message}`, sev);
+        diag.source = 'phi47';
+        diag.code   = code;
+        diagnostics.push(diag);
+    }
+
+    return diagnostics;
+}
+
+function updateStatusBarFromOutput(output: string, filePath: string) {
+    const phiMatch = output.match(/Phi=([0-9.]+)/);
+    if (phiMatch) {
+        const phi = parseFloat(phiMatch[1]);
+        const cfg = vscode.workspace.getConfiguration('phi47');
+        if (!cfg.get('showStatusBar')) { statusBarItem.hide(); return; }
+
+        const icon  = phi >= 0.5 ? '$(check)' : phi >= 0.3 ? '$(warning)' : '$(error)';
+        const color = phi >= 0.5 ? undefined
+                    : phi >= 0.3 ? new vscode.ThemeColor('statusBarItem.warningBackground')
+                    :              new vscode.ThemeColor('statusBarItem.errorBackground');
+
+        statusBarItem.text            = `${icon} Phi=${phi.toFixed(3)}`;
+        statusBarItem.tooltip         = `Phi47: Phi=${phi.toFixed(3)} for ${path.basename(filePath)}`;
+        statusBarItem.backgroundColor = color;
+        statusBarItem.show();
+    }
+}
+
+function updateStatusBar(text: string, tooltip: string) {
+    statusBarItem.text    = text;
+    statusBarItem.tooltip = tooltip;
+    statusBarItem.show();
+}
+
+let outputChannel: vscode.OutputChannel;
+function showOutputChannel(content: string) {
+    if (!outputChannel) outputChannel = vscode.window.createOutputChannel('Phi47');
+    outputChannel.clear();
+    outputChannel.appendLine(content);
+    outputChannel.show();
+}
+
+function showReport() {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) { vscode.window.showWarningMessage('Phi47: Open a file first.'); return; }
+
+    const python = getPythonPath();
+    const cmd    = `"${python}" -m phi47 analyze "${editor.document.fileName}" --json`;
+
+    exec(cmd, (err, stdout) => {
+        try {
+            const data  = JSON.parse(stdout);
+            const panel = vscode.window.createWebviewPanel(
+                'phi47Report', 'Phi47 Report', vscode.ViewColumn.Beside,
+                { enableScripts: true }
+            );
+            panel.webview.html = buildReportHtml(data, editor.document.fileName);
+        } catch {
+            showOutputChannel(stdout);
+        }
+    });
+}
+
+function buildReportHtml(data: any, filePath: string): string {
+    const name  = path.basename(filePath);
+    const items = Array.isArray(data) ? data : [];
+    const phi   = items.find((d: any) => d.code === 'P001')?.phi_value ?? 'N/A';
+    const rows  = items.map((d: any) => `
+        <tr class="${d.severity}">
+            <td>${d.line}</td>
+            <td><span class="badge">${d.code}</span></td>
+            <td>${d.severity}</td>
+            <td>${d.message}</td>
+        </tr>`).join('');
+
+    return `<!DOCTYPE html><html><head><style>
+        body { font-family: -apple-system, sans-serif; padding: 20px; background: #1e1e1e; color: #ccc; }
+        h1   { color: #a78bfa; font-size: 1.4em; }
+        .phi { font-size: 2.5em; font-weight: bold; color: ${
+            typeof phi === 'number' ? (phi >= 0.5 ? '#10b981' : phi >= 0.3 ? '#f59e0b' : '#ef4444') : '#888'
+        }; }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        th    { background: #2d2d2d; padding: 8px; text-align: left; color: #a78bfa; }
+        td    { padding: 6px 8px; border-bottom: 1px solid #333; font-size: 0.9em; }
+        .error   td { color: #ef4444; }
+        .warning td { color: #f59e0b; }
+        .info    td { color: #60a5fa; }
+        .hint    td { color: #9ca3af; }
+        .badge { background: #374151; padding: 2px 6px; border-radius: 4px;
+                 font-family: monospace; font-size: 0.85em; color: #a78bfa; }
+    </style></head><body>
+    <h1>Phi47 Report: ${name}</h1>
+    <div class="phi">Phi = ${typeof phi === 'number' ? phi.toFixed(3) : phi}</div>
+    <p>${items.length} diagnostic(s) found</p>
+    <table>
+        <tr><th>Line</th><th>Code</th><th>Severity</th><th>Message</th></tr>
+        ${rows || '<tr><td colspan="4" style="color:#10b981">No issues found</td></tr>'}
+    </table>
+    </body></html>`;
+}
+
+export function deactivate() {
+    DIAG_COLLECTION.dispose();
+}

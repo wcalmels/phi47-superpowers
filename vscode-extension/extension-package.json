@@ -1,0 +1,87 @@
+{
+  "name": "phi47-superpowers",
+  "displayName": "Phi47 Superpowers",
+  "description": "Structural code quality linter based on Integrated Information Theory (IIT 4.0). Detects zombie functions, low Phi, and fragmented codebases.",
+  "version": "0.1.1",
+  "publisher": "wcalmels",
+  "icon": "images/phi47-icon.png",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Linters", "Other"],
+  "keywords": ["linter","phi","iit","code quality","zombie functions","structural analysis"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wcalmels/phi47-superpowers"
+  },
+  "homepage": "https://phi47.tuch.systems",
+  "license": "MIT",
+  "activationEvents": ["onLanguage:python"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "phi47.analyzeFile",
+        "title": "Phi47: Analyze Current File"
+      },
+      {
+        "command": "phi47.analyzeWorkspace",
+        "title": "Phi47: Analyze Workspace"
+      },
+      {
+        "command": "phi47.showReport",
+        "title": "Phi47: Show Phi Report"
+      }
+    ],
+    "configuration": {
+      "title": "Phi47",
+      "properties": {
+        "phi47.pythonPath": {
+          "type": "string",
+          "default": "python",
+          "description": "Path to Python executable"
+        },
+        "phi47.enableOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run Phi47 analysis on file save"
+        },
+        "phi47.phiErrorThreshold": {
+          "type": "number",
+          "default": 0.3,
+          "description": "Phi below this value triggers an error diagnostic"
+        },
+        "phi47.phiWarningThreshold": {
+          "type": "number",
+          "default": 0.5,
+          "description": "Phi below this value triggers a warning diagnostic"
+        },
+        "phi47.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show Phi value in status bar"
+        }
+      }
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "phi47.analyzeFile",
+          "when": "editorLangId == python",
+          "group": "phi47"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.24.0"
+  }
+}
