@@ -171,5 +171,37 @@ def init(path):
     run('init', path=path)
 
 
+@cli.command('pipeline')
+@click.argument('description')
+@click.option('--output-dir', '-o', default='output/module')
+@click.option('--name', default='Generated Module')
+@click.option('--requirement', '-r', multiple=True)
+@click.option('--file', 'style_file', default=None, help='Style reference .py file')
+@click.option('--phi-threshold', default=0.5)
+@click.option('--max-refinements', default=2)
+@click.option('--json', 'as_json', is_flag=True)
+@click.option('--strict', is_flag=True)
+def pipeline(description, output_dir, name, requirement, style_file,
+             phi_threshold, max_refinements, as_json, strict):
+    '''Resonance + Phi47: parallel generation, Phi analysis, selective refine.'''
+    from phi47.integration.resonance_pipeline import run_resonance_pipeline
+    try:
+        code = run_resonance_pipeline(
+            description=description,
+            output_dir=output_dir,
+            name=name,
+            requirements=list(requirement),
+            style_file=style_file,
+            phi_threshold=phi_threshold,
+            max_refinements=max_refinements,
+            as_json=as_json,
+            strict=strict,
+        )
+    except RuntimeError as e:
+        raise click.ClickException(str(e)) from e
+    if strict and code == 2:
+        raise SystemExit(2)
+
+
 if __name__ == '__main__':
     cli()
