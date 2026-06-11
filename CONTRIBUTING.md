@@ -1,6 +1,6 @@
 ﻿# Contributing
 
-    git clone https://github.com/TUCHSystems/phi47-superpowers
+    git clone https://github.com/wcalmels/phi47-superpowers
     pip install -e ".[dev]"
     pytest tests/ -v
 

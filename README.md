@@ -1,6 +1,6 @@
 ﻿# Phi47 Superpowers Layer
 
-[![CI](https://github.com/TUCHSystems/phi47-superpowers/actions/workflows/ci.yml/badge.svg)](https://github.com/TUCHSystems/phi47-superpowers/actions)
+[![CI](https://github.com/wcalmels/phi47-superpowers/actions/workflows/ci.yml/badge.svg)](https://github.com/wcalmels/phi47-superpowers/actions)
 [![PyPI](https://img.shields.io/pypi/v/phi47-superpowers)](https://pypi.org/project/phi47-superpowers/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 

@@ -8,6 +8,7 @@ from pathlib import Path
 import click
 import numpy as np
 
+from phi47 import __version__
 from phi47.linter.phi_linter import Phi47Linter
 from phi47.wrapper.llm_wrapper import Phi47LLMWrapper
 
@@ -26,7 +27,7 @@ def config(linter: Phi47Linter | None = None, _mesh: bool = False) -> dict:
     if linter is None:
         _, linter = ctx('.', _mesh=True)
     cfg = {
-        'version': '0.1.0',
+        'version': __version__,
         'phi_threshold': linter.phi_warning,
         'auto_refine': True,
         'backend': 'claude',
@@ -86,7 +87,7 @@ def run(action: str, **kwargs) -> None:
                        f'Phi={phi:.3f}  issues={len(diags)}')
             show = diags if not kwargs['quiet'] else [d for d in diags if d.severity == 'error']
             for d in show[:10]:
-                click.echo(f'  [{d.severity.upper()}] [{d.code}] L{d.line}: {d.message}')
+                click.echo(str(d))
                 if not kwargs['quiet']:
                     click.echo(f'    -> {d.suggestion}')
             return
@@ -135,7 +136,7 @@ def run(action: str, **kwargs) -> None:
 
 
 @click.group()
-@click.version_option('0.1.0', prog_name='phi47')
+@click.version_option(__version__, prog_name='phi47')
 def cli():
     '''phi47 -- structural code quality layer based on IIT 4.0.'''
     ctx('.')
