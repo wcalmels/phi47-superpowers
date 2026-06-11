@@ -1,5 +1,14 @@
 ﻿# Changelog
 
+## [0.1.2] -- 2026-06-11
+### Added
+- VS Code extension prepared for Marketplace (package.json, icon, tsconfig, PUBLISHING.md)
+- `phi47 pipeline` CLI command (Resonance + Phi47 synergy)
+
+### Changed
+- Extension v0.1.2: Windows `py -3` default, missing-package error hint
+- Extension source in `vscode-extension/src/`, compiled to `out/`
+
 ## [0.1.1] -- 2026-06-10
 ### Added
 - VS Code / Cursor extension v0.1.1 (phi47-superpowers.vsix)

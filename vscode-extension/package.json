@@ -2,17 +2,32 @@
   "name": "phi47-superpowers",
   "displayName": "Phi47 Superpowers",
   "description": "Structural code quality linter based on Integrated Information Theory (IIT 4.0). Detects zombie functions, low Phi, and fragmented codebases.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "wcalmels",
   "icon": "images/phi47-icon.png",
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Linters", "Other"],
-  "keywords": ["linter","phi","iit","code quality","zombie functions","structural analysis"],
+  "keywords": [
+    "linter",
+    "phi",
+    "iit",
+    "code quality",
+    "python",
+    "structural analysis",
+    "zombie functions"
+  ],
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/wcalmels/phi47-superpowers"
   },
-  "homepage": "https://phi47.tuch.systems",
+  "bugs": {
+    "url": "https://github.com/wcalmels/phi47-superpowers/issues"
+  },
+  "homepage": "https://github.com/wcalmels/phi47-superpowers#readme",
   "license": "MIT",
   "activationEvents": ["onLanguage:python"],
   "main": "./out/extension.js",
@@ -20,15 +35,18 @@
     "commands": [
       {
         "command": "phi47.analyzeFile",
-        "title": "Phi47: Analyze Current File"
+        "title": "Phi47: Analyze Current File",
+        "category": "Phi47"
       },
       {
         "command": "phi47.analyzeWorkspace",
-        "title": "Phi47: Analyze Workspace"
+        "title": "Phi47: Analyze Workspace",
+        "category": "Phi47"
       },
       {
         "command": "phi47.showReport",
-        "title": "Phi47: Show Phi Report"
+        "title": "Phi47: Show Phi Report",
+        "category": "Phi47"
       }
     ],
     "configuration": {
@@ -36,13 +54,13 @@
       "properties": {
         "phi47.pythonPath": {
           "type": "string",
-          "default": "python",
-          "description": "Path to Python executable"
+          "default": "",
+          "description": "Python executable with phi47-superpowers installed (default: python3, or py -3 on Windows)"
         },
         "phi47.enableOnSave": {
           "type": "boolean",
           "default": true,
-          "description": "Run Phi47 analysis on file save"
+          "description": "Run Phi47 analysis when a Python file is saved"
         },
         "phi47.phiErrorThreshold": {
           "type": "number",
@@ -57,7 +75,7 @@
         "phi47.showStatusBar": {
           "type": "boolean",
           "default": true,
-          "description": "Show Phi value in status bar"
+          "description": "Show Phi value in the status bar"
         }
       }
     },
@@ -66,7 +84,7 @@
         {
           "command": "phi47.analyzeFile",
           "when": "editorLangId == python",
-          "group": "phi47"
+          "group": "phi47@1"
         }
       ]
     }
@@ -81,7 +99,7 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
-    "typescript": "^5.3.0",
-    "@vscode/vsce": "^2.24.0"
+    "@vscode/vsce": "^2.24.0",
+    "typescript": "^5.3.0"
   }
 }

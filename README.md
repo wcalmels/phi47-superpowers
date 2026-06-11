@@ -13,6 +13,16 @@
     pip install phi47-superpowers
     pip install "phi47-superpowers[llm]"
 
+### VS Code / Cursor extension
+
+Install from VSIX (development build):
+
+    code --install-extension vscode-extension/phi47-superpowers-0.1.2.vsix
+
+Or search **Phi47 Superpowers** on the VS Code Marketplace (publisher: `wcalmels`).
+
+Requires: `pip install phi47-superpowers`
+
 ## Quick start
 
     phi47 analyze mycode.py

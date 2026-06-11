@@ -1,0 +1,13 @@
+.vscode/**
+.vscode-test/**
+src/**
+.gitignore
+tsconfig.json
+**/*.ts
+**/*.map
+*.vsix
+extension-package.json
+EXTENSION_README.md
+node_modules/@types/**
+node_modules/typescript/**
+node_modules/@vscode/vsce/**

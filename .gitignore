@@ -12,3 +12,5 @@ coverage.xml
 *.log
 .DS_Store
 _phi47_tmp.py
+node_modules/
+vscode-extension/node_modules/

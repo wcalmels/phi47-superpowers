@@ -8,16 +8,14 @@ let statusBarItem: vscode.StatusBarItem;
 export function activate(context: vscode.ExtensionContext) {
     console.log('Phi47 extension activated');
 
-    // Status bar
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
     statusBarItem.command = 'phi47.analyzeFile';
     context.subscriptions.push(statusBarItem);
 
-    // Commands
     context.subscriptions.push(
         vscode.commands.registerCommand('phi47.analyzeFile', () => {
             const editor = vscode.window.activeTextEditor;
-            if (editor && editor.document.languageId === 'python') {
+            if (editor?.document.languageId === 'python') {
                 analyzeFile(editor.document);
             } else {
                 vscode.window.showWarningMessage('Phi47: Open a Python file first.');
@@ -37,7 +35,6 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    // Auto-run on save
     context.subscriptions.push(
         vscode.workspace.onDidSaveTextDocument(doc => {
             const cfg = vscode.workspace.getConfiguration('phi47');
@@ -47,25 +44,58 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    // Run on open
     if (vscode.window.activeTextEditor?.document.languageId === 'python') {
         analyzeFile(vscode.window.activeTextEditor.document);
     }
 }
 
 function getPythonPath(): string {
-    const cfg = vscode.workspace.getConfiguration('phi47');
-    return cfg.get('pythonPath') as string || 'python';
+    const configured = vscode.workspace.getConfiguration('phi47').get<string>('pythonPath');
+    if (configured?.trim()) {
+        return configured.trim();
+    }
+    return process.platform === 'win32' ? 'py -3' : 'python3';
+}
+
+function phi47Command(args: string): string {
+    const python = getPythonPath();
+    if (python.includes(' ')) {
+        return `${python} -m phi47 ${args}`;
+    }
+    return `"${python}" -m phi47 ${args}`;
+}
+
+function handleExecError(stderr: string, stdout: string): void {
+    const output = (stdout + stderr).toLowerCase();
+    if (output.includes('modulenotfounderror') || output.includes('no module named')) {
+        vscode.window.showErrorMessage(
+            'Phi47: Python package not found. Run: pip install phi47-superpowers',
+            'Copy install command'
+        ).then(sel => {
+            if (sel === 'Copy install command') {
+                vscode.env.clipboard.writeText('pip install phi47-superpowers');
+            }
+        });
+        return;
+    }
+    if (stderr.trim()) {
+        showOutputChannel(stdout + stderr);
+    }
 }
 
 function analyzeFile(doc: vscode.TextDocument) {
-    const python = getPythonPath();
     const filePath = doc.fileName;
-    const cmd = `"${python}" -m phi47 analyze "${filePath}"`;
+    const cmd = phi47Command(`analyze "${filePath}"`);
 
     updateStatusBar('$(loading~spin) Phi47...', '');
 
     exec(cmd, (err, stdout, stderr) => {
+        if (err) {
+            handleExecError(stderr, stdout);
+            updateStatusBar('$(error) Phi47', 'Analysis failed — see output');
+            return;
+        }
+
         const output = stdout + stderr;
         const diagnostics = parseDiagnostics(doc, output);
         DIAG_COLLECTION.set(doc.uri, diagnostics);
@@ -84,9 +114,8 @@ function analyzeWorkspace() {
         return;
     }
 
-    const python = getPythonPath();
     const wsPath = folders[0].uri.fsPath;
-    const cmd = `"${python}" -m phi47 analyze "${wsPath}"`;
+    const cmd = phi47Command(`analyze "${wsPath}"`);
 
     vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
@@ -94,12 +123,19 @@ function analyzeWorkspace() {
         cancellable: false
     }, () => new Promise<void>(resolve => {
         exec(cmd, (err, stdout, stderr) => {
+            if (err) {
+                handleExecError(stderr, stdout);
+                resolve();
+                return;
+            }
             const lines = (stdout + stderr).split('\n').filter(l => l.trim());
             vscode.window.showInformationMessage(
-                `Phi47: Workspace analysis complete. ${lines.length} issues found.`,
+                `Phi47: Workspace analysis complete. ${lines.length} line(s) in report.`,
                 'Show Output'
             ).then(sel => {
-                if (sel === 'Show Output') showOutputChannel(stdout + stderr);
+                if (sel === 'Show Output') {
+                    showOutputChannel(stdout + stderr);
+                }
             });
             resolve();
         });
@@ -112,26 +148,29 @@ function parseDiagnostics(doc: vscode.TextDocument, output: string): vscode.Diag
 
     for (const line of output.split('\n')) {
         const match = line.match(pattern);
-        if (!match) continue;
+        if (!match) {
+            continue;
+        }
 
         const [, file, lineStr, colStr, severity, code, message] = match;
 
-        // Only process diagnostics for this file
         if (!doc.fileName.endsWith(path.basename(file)) &&
-            !file.includes(path.basename(doc.fileName))) continue;
+            !file.includes(path.basename(doc.fileName))) {
+            continue;
+        }
 
-        const lineNum = Math.max(0, parseInt(lineStr) - 1);
-        const col     = Math.max(0, parseInt(colStr));
-        const range   = new vscode.Range(lineNum, col, lineNum, 999);
+        const lineNum = Math.max(0, parseInt(lineStr, 10) - 1);
+        const col = Math.max(0, parseInt(colStr, 10));
+        const range = new vscode.Range(lineNum, col, lineNum, 999);
 
-        const sev = severity === 'error'   ? vscode.DiagnosticSeverity.Error
-                  : severity === 'warning' ? vscode.DiagnosticSeverity.Warning
-                  : severity === 'info'    ? vscode.DiagnosticSeverity.Information
-                  :                          vscode.DiagnosticSeverity.Hint;
+        const sev = severity === 'error' ? vscode.DiagnosticSeverity.Error
+            : severity === 'warning' ? vscode.DiagnosticSeverity.Warning
+            : severity === 'info' ? vscode.DiagnosticSeverity.Information
+            : vscode.DiagnosticSeverity.Hint;
 
         const diag = new vscode.Diagnostic(range, `[${code}] ${message}`, sev);
         diag.source = 'phi47';
-        diag.code   = code;
+        diag.code = code;
         diagnostics.push(diag);
     }
 
@@ -140,32 +179,40 @@ function parseDiagnostics(doc: vscode.TextDocument, output: string): vscode.Diag
 
 function updateStatusBarFromOutput(output: string, filePath: string) {
     const phiMatch = output.match(/Phi=([0-9.]+)/);
-    if (phiMatch) {
-        const phi = parseFloat(phiMatch[1]);
-        const cfg = vscode.workspace.getConfiguration('phi47');
-        if (!cfg.get('showStatusBar')) { statusBarItem.hide(); return; }
-
-        const icon  = phi >= 0.5 ? '$(check)' : phi >= 0.3 ? '$(warning)' : '$(error)';
-        const color = phi >= 0.5 ? undefined
-                    : phi >= 0.3 ? new vscode.ThemeColor('statusBarItem.warningBackground')
-                    :              new vscode.ThemeColor('statusBarItem.errorBackground');
-
-        statusBarItem.text            = `${icon} Phi=${phi.toFixed(3)}`;
-        statusBarItem.tooltip         = `Phi47: Phi=${phi.toFixed(3)} for ${path.basename(filePath)}`;
-        statusBarItem.backgroundColor = color;
-        statusBarItem.show();
+    if (!phiMatch) {
+        return;
     }
+
+    const phi = parseFloat(phiMatch[1]);
+    const cfg = vscode.workspace.getConfiguration('phi47');
+    if (!cfg.get('showStatusBar')) {
+        statusBarItem.hide();
+        return;
+    }
+
+    const icon = phi >= 0.5 ? '$(check)' : phi >= 0.3 ? '$(warning)' : '$(error)';
+    const color = phi >= 0.5 ? undefined
+        : phi >= 0.3 ? new vscode.ThemeColor('statusBarItem.warningBackground')
+        : new vscode.ThemeColor('statusBarItem.errorBackground');
+
+    statusBarItem.text = `${icon} Phi=${phi.toFixed(3)}`;
+    statusBarItem.tooltip = `Phi47: Phi=${phi.toFixed(3)} for ${path.basename(filePath)}`;
+    statusBarItem.backgroundColor = color;
+    statusBarItem.show();
 }
 
 function updateStatusBar(text: string, tooltip: string) {
-    statusBarItem.text    = text;
+    statusBarItem.text = text;
     statusBarItem.tooltip = tooltip;
     statusBarItem.show();
 }
 
 let outputChannel: vscode.OutputChannel;
+
 function showOutputChannel(content: string) {
-    if (!outputChannel) outputChannel = vscode.window.createOutputChannel('Phi47');
+    if (!outputChannel) {
+        outputChannel = vscode.window.createOutputChannel('Phi47');
+    }
     outputChannel.clear();
     outputChannel.appendLine(content);
     outputChannel.show();
@@ -173,30 +220,38 @@ function showOutputChannel(content: string) {
 
 function showReport() {
     const editor = vscode.window.activeTextEditor;
-    if (!editor) { vscode.window.showWarningMessage('Phi47: Open a file first.'); return; }
+    if (!editor) {
+        vscode.window.showWarningMessage('Phi47: Open a file first.');
+        return;
+    }
 
-    const python = getPythonPath();
-    const cmd    = `"${python}" -m phi47 analyze "${editor.document.fileName}" --json`;
+    const cmd = phi47Command(`analyze "${editor.document.fileName}" --json`);
 
-    exec(cmd, (err, stdout) => {
+    exec(cmd, (err, stdout, stderr) => {
+        if (err) {
+            handleExecError(stderr, stdout);
+            return;
+        }
         try {
-            const data  = JSON.parse(stdout);
+            const data = JSON.parse(stdout);
             const panel = vscode.window.createWebviewPanel(
                 'phi47Report', 'Phi47 Report', vscode.ViewColumn.Beside,
                 { enableScripts: true }
             );
             panel.webview.html = buildReportHtml(data, editor.document.fileName);
         } catch {
-            showOutputChannel(stdout);
+            showOutputChannel(stdout + stderr);
         }
     });
 }
 
-function buildReportHtml(data: any, filePath: string): string {
-    const name  = path.basename(filePath);
+function buildReportHtml(data: unknown, filePath: string): string {
+    const name = path.basename(filePath);
     const items = Array.isArray(data) ? data : [];
-    const phi   = items.find((d: any) => d.code === 'P001')?.phi_value ?? 'N/A';
-    const rows  = items.map((d: any) => `
+    const phiEntry = items.find((d: { code?: string }) => d.code === 'P001') as
+        { phi_value?: number } | undefined;
+    const phi = phiEntry?.phi_value ?? 'N/A';
+    const rows = items.map((d: { line: number; code: string; severity: string; message: string }) => `
         <tr class="${d.severity}">
             <td>${d.line}</td>
             <td><span class="badge">${d.code}</span></td>
@@ -204,12 +259,14 @@ function buildReportHtml(data: any, filePath: string): string {
             <td>${d.message}</td>
         </tr>`).join('');
 
+    const phiColor = typeof phi === 'number'
+        ? (phi >= 0.5 ? '#10b981' : phi >= 0.3 ? '#f59e0b' : '#ef4444')
+        : '#888';
+
     return `<!DOCTYPE html><html><head><style>
         body { font-family: -apple-system, sans-serif; padding: 20px; background: #1e1e1e; color: #ccc; }
         h1   { color: #a78bfa; font-size: 1.4em; }
-        .phi { font-size: 2.5em; font-weight: bold; color: ${
-            typeof phi === 'number' ? (phi >= 0.5 ? '#10b981' : phi >= 0.3 ? '#f59e0b' : '#ef4444') : '#888'
-        }; }
+        .phi { font-size: 2.5em; font-weight: bold; color: ${phiColor}; }
         table { width: 100%; border-collapse: collapse; margin-top: 16px; }
         th    { background: #2d2d2d; padding: 8px; text-align: left; color: #a78bfa; }
         td    { padding: 6px 8px; border-bottom: 1px solid #333; font-size: 0.9em; }
