@@ -1,6 +1,7 @@
 ﻿# Phi47 Superpowers Layer
 
 [![CI](https://github.com/wcalmels/phi47-superpowers/actions/workflows/ci.yml/badge.svg)](https://github.com/wcalmels/phi47-superpowers/actions)
+[![VS Marketplace](https://img.shields.io/visual-studio-marketplace/v/wcalmels.phi47-superpowers?label=VS%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=wcalmels.phi47-superpowers)
 [![PyPI](https://img.shields.io/pypi/v/phi47-superpowers)](https://pypi.org/project/phi47-superpowers/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -15,13 +16,15 @@
 
 ### VS Code / Cursor extension
 
-Install from VSIX (development build):
+**[Install from Marketplace](https://marketplace.visualstudio.com/items?itemName=wcalmels.phi47-superpowers)** — search **Phi47 Superpowers** in Extensions (`Ctrl+Shift+X`).
+
+Works in VS Code and Cursor. Requires the Python package:
+
+    pip install phi47-superpowers
+
+Development install from VSIX:
 
     code --install-extension vscode-extension/phi47-superpowers-0.1.2.vsix
-
-Or search **Phi47 Superpowers** on the VS Code Marketplace (publisher: `wcalmels`).
-
-Requires: `pip install phi47-superpowers`
 
 ## Quick start
 
