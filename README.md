@@ -28,13 +28,17 @@ Development install from VSIX:
 
 ### Resonance + Phi47 synergy
 
-Generate code with [Resonance](https://marketplace.visualstudio.com/items?itemName=wcalmels.resonance), validate structure with Phi47:
+Both extensions are on VS Marketplace. Full guide: **[docs/QUICKSTART.md](docs/QUICKSTART.md)**
 
-    pip install resonance phi47-superpowers
+| Step | Action |
+|------|--------|
+| 1 | Install [Resonance](https://marketplace.visualstudio.com/items?itemName=wcalmels.resonance) + [Phi47](https://marketplace.visualstudio.com/items?itemName=wcalmels.phi47-superpowers) from Extensions |
+| 2 | `pip install resonance phi47-superpowers` |
+| 3 | `Ctrl+Shift+P` → **Phi47 + Resonance: Generate Module with Quality Pipeline** |
 
-`Ctrl+Shift+P` → **Phi47 + Resonance: Generate Module with Quality Pipeline**
+CLI: `phi47 pipeline "User auth JWT" -o output/auth`
 
-## Quick start
+## Quick start (Phi47 only)
 
     phi47 analyze mycode.py
     phi47 analyze .
