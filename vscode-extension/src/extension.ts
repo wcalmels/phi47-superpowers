@@ -36,6 +36,12 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(
+        vscode.commands.registerCommand('phi47.resonancePipeline', () => {
+            runResonancePipeline();
+        })
+    );
+
+    context.subscriptions.push(
         vscode.workspace.onDidSaveTextDocument(doc => {
             const cfg = vscode.workspace.getConfiguration('phi47');
             if (cfg.get('enableOnSave') && doc.languageId === 'python') {
@@ -285,6 +291,81 @@ function buildReportHtml(data: unknown, filePath: string): string {
         ${rows || '<tr><td colspan="4" style="color:#10b981">No issues found</td></tr>'}
     </table>
     </body></html>`;
+}
+
+async function runResonancePipeline(): Promise<void> {
+    const description = await vscode.window.showInputBox({
+        prompt: 'Module description (Resonance generates, Phi47 validates)',
+        placeHolder: 'e.g. User auth JWT — register, login, me endpoint'
+    });
+    if (!description) return;
+
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders) {
+        vscode.window.showWarningMessage('Phi47: Open a workspace first.');
+        return;
+    }
+
+    const slug = description.split(' ').slice(0, 3).join('_').toLowerCase();
+    const outputDir = path.join(folders[0].uri.fsPath, 'output', slug);
+    const threshold = vscode.workspace.getConfiguration('phi47').get<number>('phiWarningThreshold', 0.5);
+
+    const args = [
+        'pipeline',
+        `--description "${description.replace(/"/g, '\\"')}"`,
+        `--output-dir "${outputDir}"`,
+        `--phi-threshold ${threshold}`
+    ].join(' ');
+
+    await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: 'Phi47 + Resonance: quality pipeline...',
+        cancellable: false
+    }, () => new Promise<void>((resolve) => {
+        const cmd = buildResonanceCommand(args);
+        exec(cmd, {
+            timeout: 300000,
+            env: process.env,
+            cwd: folders[0].uri.fsPath,
+            maxBuffer: 10 * 1024 * 1024,
+        }, (err, stdout, stderr) => {
+            if (err) {
+                const out = (stdout + stderr).toLowerCase();
+                if (out.includes('modulenotfounderror') || out.includes('no module named')) {
+                    vscode.window.showErrorMessage(
+                        'Install: pip install resonance phi47-superpowers',
+                        'Copy command'
+                    ).then(sel => {
+                        if (sel === 'Copy command') {
+                            vscode.env.clipboard.writeText('pip install resonance phi47-superpowers');
+                        }
+                    });
+                } else {
+                    vscode.window.showErrorMessage(`Pipeline failed: ${stderr || err.message}`);
+                }
+                resolve();
+                return;
+            }
+
+            const phiMatch = stdout.match(/System Phi:\s+([0-9.]+)\s*->\s*([0-9.]+)/);
+            const msg = phiMatch
+                ? `Pipeline done. Phi ${phiMatch[1]} → ${phiMatch[2]}`
+                : 'Pipeline complete';
+
+            vscode.window.showInformationMessage(`${msg}. Output: ${outputDir}`, 'Analyze').then(sel => {
+                if (sel === 'Analyze') {
+                    exec(phi47Command(`analyze "${outputDir}"`), () => {});
+                }
+            });
+            resolve();
+        });
+    }));
+}
+
+function buildResonanceCommand(args: string): string {
+    const python = getPythonPath();
+    const body = `-m resonance ${args}`;
+    return python.includes(' ') ? `${python} ${body}` : `"${python}" ${body}`;
 }
 
 export function deactivate() {

@@ -24,7 +24,15 @@ Works in VS Code and Cursor. Requires the Python package:
 
 Development install from VSIX:
 
-    code --install-extension vscode-extension/phi47-superpowers-0.1.2.vsix
+    code --install-extension vscode-extension/phi47-superpowers-0.1.3.vsix
+
+### Resonance + Phi47 synergy
+
+Generate code with [Resonance](https://github.com/wcalmels/resonance), validate structure with Phi47:
+
+    pip install resonance phi47-superpowers
+
+`Ctrl+Shift+P` → **Phi47 + Resonance: Generate Module with Quality Pipeline**
 
 ## Quick start
 

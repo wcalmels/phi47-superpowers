@@ -54,16 +54,21 @@ pip install phi47-superpowers
 Spectral approximation of IIT 4.0 — O(n³) instead of exact O(2^n).  
 Paper and benchmarks: [github.com/wcalmels/phi47-superpowers](https://github.com/wcalmels/phi47-superpowers)
 
-## Resonance integration (optional)
+## Resonance integration
 
-For AI code generation with Phi-guided refinement:
+Install the **[Resonance](https://github.com/wcalmels/resonance)** extension and Python packages:
 
 ```bash
 pip install resonance phi47-superpowers
-phi47 pipeline "User auth JWT" -o output/auth
 ```
 
-See [Resonance](https://github.com/wcalmels/resonance).
+**Command:** `Phi47 + Resonance: Generate Module with Quality Pipeline`
+
+1. Resonance generates 4 files in parallel (minimal tokens)
+2. Phi47 analyzes structural Phi locally
+3. Resonance refines only weak files
+
+Also available: `Ctrl+Shift+P` → **Resonance + Phi47: Generate Module with Quality Pipeline**
 
 ## License
 

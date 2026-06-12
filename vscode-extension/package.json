@@ -2,7 +2,7 @@
   "name": "phi47-superpowers",
   "displayName": "Phi47 Superpowers",
   "description": "Structural code quality linter based on Integrated Information Theory (IIT 4.0). Detects zombie functions, low Phi, and fragmented codebases.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "publisher": "wcalmels",
   "icon": "images/phi47-icon.png",
   "engines": { "vscode": "^1.85.0" },
@@ -31,6 +31,9 @@
   "license": "MIT",
   "activationEvents": ["onLanguage:python"],
   "main": "./out/extension.js",
+  "extensionRecommendations": [
+    "wcalmels.resonance"
+  ],
   "contributes": {
     "commands": [
       {
@@ -46,6 +49,11 @@
       {
         "command": "phi47.showReport",
         "title": "Phi47: Show Phi Report",
+        "category": "Phi47"
+      },
+      {
+        "command": "phi47.resonancePipeline",
+        "title": "Phi47 + Resonance: Generate Module with Quality Pipeline",
         "category": "Phi47"
       }
     ],

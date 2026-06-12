@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.3] - 2026-06-12
+
+### Added
+- **Phi47 + Resonance: Generate Module with Quality Pipeline** command
+- Recommends Resonance extension (`wcalmels.resonance`)
+
 ## [0.1.2] - 2026-06-11
 
 ### Added
