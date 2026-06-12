@@ -28,7 +28,7 @@ Development install from VSIX:
 
 ### Resonance + Phi47 synergy
 
-Generate code with [Resonance](https://github.com/wcalmels/resonance), validate structure with Phi47:
+Generate code with [Resonance](https://marketplace.visualstudio.com/items?itemName=wcalmels.resonance), validate structure with Phi47:
 
     pip install resonance phi47-superpowers
 
